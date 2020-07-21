@@ -6,8 +6,7 @@
 # Author: Dawid Seredynski, 2020
 #
 
-from sympy import pprint, init_printing, Symbol, sin, cos, exp, sqrt, series,\
-					Integral, Function, Matrix, sympify
+from sympy import pprint, init_printing, Symbol, sin, cos, Matrix, sympify
 
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_parser import kdl_tree_from_urdf_model
@@ -36,6 +35,10 @@ used_joints = ['torso_0_joint', 'right_arm_0_joint', 'right_arm_1_joint',
 
 base_link = 'torso_base'
 end_link_list = ['right_arm_7_link', 'left_arm_7_link', 'head_kinect_rgb_link']
+
+joint_name_idx_map = {}
+for idx, joint_name in enumerate(used_joints):
+	joint_name_idx_map[joint_name] = idx
 
 matlab_code = 'b = 0.86602540378614;\n'
 expr_str = None
@@ -69,21 +72,11 @@ for end_link_idx, end_link in enumerate(end_link_list):
 	print 'inertia:', dir(seg.getInertia())
 	print 'rot. inertia:', dir(PyKDL.RotationalInertia())
 
-	joint_name_idx_map = {}
-	for idx, joint_name in enumerate(used_joints):
-		joint_name_idx_map[joint_name] = idx
-	current_frame = PyKDL.Frame()
-
-	dh_map = {}
-
 	#
 	#
 	#
-	print PyKDL.__file__
-	axes = []
 	fk_tr = Matrix([[0],[0],[0]])
 	fk_rot = Matrix([[1,0,0], [0,1,0], [0,0,1]])
-	fk_sol_list = []
 	theta_vec_symb_map = {}
 	for idx in range(chain.getNrOfSegments()):
 		print '***** {} *****'.format(idx)
@@ -130,7 +123,6 @@ for end_link_idx, end_link in enumerate(end_link_list):
 
 			fk_rot = fk_rot * R
 			pprint(R)
-			fk_sol_list.append( (fk_rot, fk_tr) )
 
 	fk_rot = replaceConstants(fk_rot)
 	fk_tr = replaceConstants(fk_tr)
