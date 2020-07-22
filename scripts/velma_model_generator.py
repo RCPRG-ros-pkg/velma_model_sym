@@ -248,16 +248,22 @@ class RobotSymbModel:
 	def __getSimplifiedChain(self, chain):
 		new_chain = RobotSymbModel.Chain()
 		frame_to_tip = PyKDL.Frame()
+		open_seg = False
 		for idx in range(chain.getNrOfSegments()):
 			seg = chain.getSegment(idx)
 			joint = seg.getJoint()
 			frame_to_tip = frame_to_tip * seg.getFrameToTip()
+			open_seg = True
 
 			if joint.getTypeName() != 'None':
 				new_joint = RobotSymbModel.Joint(joint)
 				new_seg = RobotSymbModel.Segment(seg.getName(), frame_to_tip, new_joint)
 				new_chain.addSegment(new_seg)
 				frame_to_tip = PyKDL.Frame()
+				open_seg = False
+		if open_seg:
+			print 'open seg: ', seg.getName(), joint.getName()
+			# TODO: manage this case
 		return new_chain
 
 	def getFkFunc(self, link_name):
@@ -468,7 +474,22 @@ for end_link_idx, end_link in enumerate(end_link_list):
 	model.calculateFd(end_link)
 
 visualize(model)
-#print model.getFk('right_arm_7_link')
+
+exit(0)
+
+# print symbolic results
+for end_link in end_link_list:
+	print '*** FK for {}'.format(end_link)
+	expr_R, expr_P = model.getFkSymb(end_link)
+	print 'R = {}'.format(expr_R)
+	print 'p = {}'.format(expr_P)
+
+	print '*** FD (velocities and accelerations) for {}'.format(end_link)
+	expr_w, expr_e, expr_A = model.getFdSymb(end_link)
+	print 'w = {}'.format(expr_w)
+	print 'e = {}'.format(expr_e)
+	print 'A = {}'.format(expr_A)
+
 exit(0)
 
 symb_map = {}
