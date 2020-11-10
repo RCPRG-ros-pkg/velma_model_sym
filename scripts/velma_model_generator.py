@@ -64,10 +64,12 @@ def visualize(model):
 			m = MarkerArray()
 			m_id = 0
 			for link_name in used_links:
-				func_R, func_P = model.getFkFunc(link_name)
+				#func_R, func_P = model.getFkFunc(link_name)
+				func_T = model.getFkFunc(link_name)
 				func_w, func_e, func_A = model.getFdFunc(link_name)
-				sP = func_P(*q)
-				sR = func_R(*q)
+				#sP = func_P(*q)
+				#sR = func_R(*q)
+				sT = func_T(*q)
 				A = func_A(*(q+dq+ddq))
 				marker = Marker()
 				marker.header.frame_id = 'torso_base'
@@ -76,8 +78,10 @@ def visualize(model):
 				marker.id = m_id
 				marker.type = Marker.CUBE
 				marker.action = Marker.ADD
-				T = PyKDL.Frame(PyKDL.Rotation(sR[0,0], sR[0,1], sR[0,2], sR[1,0], sR[1,1], sR[1,2],
-												sR[2,0], sR[2,1], sR[2,2]), PyKDL.Vector(sP[0], sP[1], sP[2]))
+				#T = PyKDL.Frame(PyKDL.Rotation(sR[0,0], sR[0,1], sR[0,2], sR[1,0], sR[1,1], sR[1,2],
+				#								sR[2,0], sR[2,1], sR[2,2]), PyKDL.Vector(sP[0], sP[1], sP[2]))
+				T = PyKDL.Frame(PyKDL.Rotation(sT[0,0], sT[0,1], sT[0,2], sT[1,0], sT[1,1], sT[1,2],
+												sT[2,0], sT[2,1], sT[2,2]), PyKDL.Vector(sT[0,3], sT[1,3], sT[2,3]))
 				point = T.p
 				qt = T.M.GetQuaternion()
 				marker.pose = Pose( Point(point.x(),point.y(),point.z()), Quaternion(qt[0],qt[1],qt[2],qt[3]) )
@@ -268,20 +272,24 @@ class RobotSymbModel:
 
 	def getFkFunc(self, link_name):
 		if not link_name in self.__lambdified_fk_map:
-			expr_R, expr_P = self.getFkSymb(link_name)
+			#expr_R, expr_P = self.getFkSymb(link_name)
+			expr_T = self.getFkSymb(link_name)
 			args_list = []
 			for q_idx in range(len(self.__used_joints)):
 				theta = Symbol('q{}'.format(q_idx))
 				args_list.append( theta )
-			self.__lambdified_fk_map[link_name] = ( lambdify(args_list, expr_R), lambdify(args_list, expr_P) )
+			#self.__lambdified_fk_map[link_name] = ( lambdify(args_list, expr_R), lambdify(args_list, expr_P) )
+			self.__lambdified_fk_map[link_name] = lambdify(args_list, expr_T)
 		return self.__lambdified_fk_map[link_name]
 
 	def getFkSymb(self, link_name):
 		base_link_id = self.__getLinkId(self.__base_link)
 		link_id = self.__getLinkId(link_name)
-		symb_P_str = 'P_{}a{}'.format(base_link_id, link_id)
-		symb_R_str = 'R_{}a{}'.format(base_link_id, link_id)
-		return self.__getSymb(symb_R_str), self.__getSymb(symb_P_str)
+		#symb_P_str = 'P_{}a{}'.format(base_link_id, link_id)
+		#symb_R_str = 'R_{}a{}'.format(base_link_id, link_id)
+		#return self.__getSymb(symb_R_str), self.__getSymb(symb_P_str)
+		symb_T_str = 'T_{}a{}'.format(base_link_id, link_id)
+		return self.__getSymb(symb_T_str)
 
 	def calculateFk(self, end_link):
 		print '*** calculateFk from {} to {} ***'.format(self.__base_link, end_link)
@@ -309,6 +317,7 @@ class RobotSymbModel:
 
 			tfR = seg.getFrameToTip().M
 			tfP = seg.getFrameToTip().p
+			tfP2 = tfR.Inverse() * tfP
 
 			stfR = Matrix([[tfR[(0,0)], tfR[(1,0)], tfR[(2,0)]],
 							[tfR[(0,1)], tfR[(1,1)], tfR[(2,1)]],
@@ -319,7 +328,10 @@ class RobotSymbModel:
 			symb_P_next_str = 'P_{}a{}'.format(base_link_id, link_id)
 			symb_R_next_str = 'R_{}a{}'.format(base_link_id, link_id)
 
+			symb_T_diff_str = 'T_{}a{}'.format(parent_link_id, link_id)
+
 			stfP = Matrix([[tfP.x()],[tfP.y()],[tfP.z()]])
+			stfP2 = Matrix([[tfP2.x()],[tfP2.y()],[tfP2.z()]])
 			fk_tr = self.__getSymb(symb_P_prev_str) + self.__getSymb(symb_R_prev_str) * stfP
 			fk_rot = self.__getSymb(symb_R_prev_str) * stfR
 
@@ -352,13 +364,56 @@ class RobotSymbModel:
 					[t*x*y+z*s, t*y*y+c, t*y*z-x*s],
 					[t*x*z-y*s, t*y*z+x*s, t*z*z+c]])
 
+			diff_R = stfR*R
+			diff_P = stfP #self.__getSymb(symb_R_prev_str) * stfP
+			#pprint(diff_R[0,0])
+			diff_T = Matrix([	[diff_R[0,0], diff_R[0,1], diff_R[0,2], diff_P[0,0]],
+								[diff_R[1,0], diff_R[1,1], diff_R[1,2], diff_P[1,0]],
+								[diff_R[2,0], diff_R[2,1], diff_R[2,2], diff_P[2,0]],
+								[0, 0, 0, 1]])
+			if not self.__hasSymb(symb_T_diff_str):
+				self.__addSymb(symb_T_diff_str, diff_T)
+
 			fk_rot = fk_rot * R
-			pprint(R)
 
 			if not self.__hasSymb(symb_P_next_str):
 				self.__addSymb(symb_P_next_str, fk_tr)
 			if not self.__hasSymb(symb_R_next_str):
 				self.__addSymb(symb_R_next_str, fk_rot)
+
+			#if idx < 3:
+			print('diff_T')
+			pprint(diff_T)
+
+			#print('fk_rot')
+			#pprint(fk_rot)
+			#print('fk_tr')
+			#pprint(fk_tr)
+	
+		symb_T_str = 'T_{}a{}'.format(base_link_id, base_link_id)
+		if not self.__hasSymb(symb_T_str):
+			self.__addSymb(symb_T_str, Matrix([[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))
+
+		link_id = base_link_id
+		for idx in range(chain.getNrOfSegments()):
+			print '***** {} *****'.format(idx)
+			seg = chain.getSegment(idx)
+
+			parent_link_id = link_id
+			link_id = self.__getLinkId(seg.getName())
+
+			symb_T_prev_str = 'T_{}a{}'.format(base_link_id, parent_link_id)
+			symb_T_next_str = 'T_{}a{}'.format(base_link_id, link_id)
+			symb_T_diff_str = 'T_{}a{}'.format(parent_link_id, link_id)
+
+			T_next = self.__getSymb(symb_T_prev_str) * self.__getSymb(symb_T_diff_str)
+
+			if not self.__hasSymb(symb_T_next_str):
+				self.__addSymb(symb_T_next_str, T_next)
+
+			#if idx < 3:
+			#	print('T_next')
+			#	pprint(T_next)
 
 	def getFdFunc(self, link_name):
 		if not link_name in self.__lambdified_fd_map:
