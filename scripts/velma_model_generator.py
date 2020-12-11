@@ -29,6 +29,7 @@ def visualize(model):
 		used_links.append( 'left_arm_{}_link'.format(idx) )
 	used_links.append( 'head_pan_link' )
 	used_links.append( 'head_tilt_link_dummy' )
+	used_links.append( 'head_kinect_rgb_optical_frame' )
 
 	q_list = [	[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 				[1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -136,7 +137,7 @@ used_joints = ['torso_0_joint', 'right_arm_0_joint', 'right_arm_1_joint',
 	'head_pan_joint', 'head_tilt_joint']
 
 base_link = 'torso_base'
-end_link_list = ['right_arm_7_link', 'left_arm_7_link', 'head_kinect_rgb_link']
+end_link_list = ['right_arm_7_link', 'left_arm_7_link', 'head_kinect_rgb_optical_frame']
 
 joint_name_idx_map = {}
 for idx, joint_name in enumerate(used_joints):
@@ -169,6 +170,7 @@ class RobotSymbModel:
 	class Chain:
 		def __init__(self):
 			self.__segments = []
+			self.__end = None
 
 		def getNrOfSegments(self):
 			return len(self.__segments)
@@ -177,7 +179,15 @@ class RobotSymbModel:
 			return self.__segments[idx]
 
 		def addSegment(self, seg):
+			assert isinstance(seg, RobotSymbModel.Segment)
 			self.__segments.append(seg)
+
+		#def addEndFixedSegment(self, seg):
+		#	assert isinstance(seg, RobotSymbModel.Segment)
+		#	self.__end = seg
+
+		#def getEndFixedSegment(self, idx):
+		#	return self.__end
 
 	class Segment:
 		def __init__(self, name, frame_to_tip, joint):
@@ -266,6 +276,9 @@ class RobotSymbModel:
 				frame_to_tip = PyKDL.Frame()
 				open_seg = False
 		if open_seg:
+			new_seg = RobotSymbModel.Segment(seg.getName(), frame_to_tip, None)
+			new_chain.addSegment(new_seg)
+			#new_chain.addEndFixedSegment(new_seg)
 			print 'open seg: ', seg.getName(), joint.getName()
 			# TODO: manage this case
 		return new_chain
@@ -335,34 +348,42 @@ class RobotSymbModel:
 			fk_tr = self.__getSymb(symb_P_prev_str) + self.__getSymb(symb_R_prev_str) * stfP
 			fk_rot = self.__getSymb(symb_R_prev_str) * stfR
 
-			print '  joint name: {}'.format(joint.getName())
-			print '  joint axis: {}'.format(joint.JointAxis())
-			print '  joint origin: {}'.format(joint.JointOrigin())
-			print '  joint type: {}'.format(joint.getTypeName())
-			print '  seg name: {}'.format(seg.getName())
-			#inertia = seg.getInertia()
-			#print '  seg inertia: {}, {}, {}'.format(inertia.getCOG(), inertia.getMass(), inertia.getRotationalInertia())
-			print '  seg to tip: {}'.format(seg.getFrameToTip())
-			#print '  seg pose: {}'.format(seg.pose(0))
+			if joint is None:
+				R = Matrix([[1, 0, 0],
+							[0, 1, 0],
+							[0, 0, 1]])
+				print '  fixed transform'
+				print '  seg name: {}'.format(seg.getName())
+				print '  seg to tip: {}'.format(seg.getFrameToTip())
+			else:
+				print '  joint name: {}'.format(joint.getName())
+				print '  joint axis: {}'.format(joint.JointAxis())
+				print '  joint origin: {}'.format(joint.JointOrigin())
+				print '  joint type: {}'.format(joint.getTypeName())
+				print '  seg name: {}'.format(seg.getName())
+				#inertia = seg.getInertia()
+				#print '  seg inertia: {}, {}, {}'.format(inertia.getCOG(), inertia.getMass(), inertia.getRotationalInertia())
+				print '  seg to tip: {}'.format(seg.getFrameToTip())
+				#print '  seg pose: {}'.format(seg.pose(0))
 
-			if joint.getTypeName() == 'None':
-				raise Exception('Fixed joints are not supported')
-			#if seg.getFrameToTip().M.GetRot().Norm() > 0.0000001:
-			#	raise Exception('There is a bug in KDL/URDF for moveable joints with rotated origin')
+				if joint.getTypeName() == 'None':
+					raise Exception('Fixed joints are not supported')
+				#if seg.getFrameToTip().M.GetRot().Norm() > 0.0000001:
+				#	raise Exception('There is a bug in KDL/URDF for moveable joints with rotated origin')
 
-			q_idx = self.__joint_name_idx_map[joint.getName()]
-			theta = Symbol('q{}'.format(q_idx))
-			#theta_vec_symb_map[joint.getName()] = theta
-			t = (1-cos(theta))
-			s = sin(theta)
-			c = cos(theta)
-			ax = joint.JointAxis()
-			x = ax.x()
-			y = ax.y()
-			z = ax.z()
-			R = Matrix([[t*x*x+c, t*x*y-z*s, t*x*z+y*s],
-					[t*x*y+z*s, t*y*y+c, t*y*z-x*s],
-					[t*x*z-y*s, t*y*z+x*s, t*z*z+c]])
+				q_idx = self.__joint_name_idx_map[joint.getName()]
+				theta = Symbol('q{}'.format(q_idx))
+				#theta_vec_symb_map[joint.getName()] = theta
+				t = (1-cos(theta))
+				s = sin(theta)
+				c = cos(theta)
+				ax = joint.JointAxis()
+				x = ax.x()
+				y = ax.y()
+				z = ax.z()
+				R = Matrix([[t*x*x+c, t*x*y-z*s, t*x*z+y*s],
+						[t*x*y+z*s, t*y*y+c, t*y*z-x*s],
+						[t*x*z-y*s, t*y*z+x*s, t*z*z+c]])
 
 			diff_R = stfR*R
 			diff_P = stfP #self.__getSymb(symb_R_prev_str) * stfP
@@ -476,24 +497,29 @@ class RobotSymbModel:
 
 			stfP = Matrix([[tfP.x()],[tfP.y()],[tfP.z()]])
 
-			print '  joint name: {}'.format(joint.getName())
-			print '  seg name: {}'.format(seg.getName())
+			if joint is None:
+				R = Matrix([[1, 0, 0],
+							[0, 1, 0],
+							[0, 0, 1]])
+			else:
+				print '  joint name: {}'.format(joint.getName())
+				print '  seg name: {}'.format(seg.getName())
 
-			if joint.getTypeName() == 'None':
-				raise Exception('Fixed joints are not supported')
+				if joint.getTypeName() == 'None':
+					raise Exception('Fixed joints are not supported')
 
-			q_idx = self.__joint_name_idx_map[joint.getName()]
-			theta = Symbol('q{}'.format(q_idx))
-			t = (1-cos(theta))
-			s = sin(theta)
-			c = cos(theta)
-			ax = joint.JointAxis()
-			x = ax.x()
-			y = ax.y()
-			z = ax.z()
-			R = Matrix([[t*x*x+c, t*x*y-z*s, t*x*z+y*s],
-					[t*x*y+z*s, t*y*y+c, t*y*z-x*s],
-					[t*x*z-y*s, t*y*z+x*s, t*z*z+c]])
+				q_idx = self.__joint_name_idx_map[joint.getName()]
+				theta = Symbol('q{}'.format(q_idx))
+				t = (1-cos(theta))
+				s = sin(theta)
+				c = cos(theta)
+				ax = joint.JointAxis()
+				x = ax.x()
+				y = ax.y()
+				z = ax.z()
+				R = Matrix([[t*x*x+c, t*x*y-z*s, t*x*z+y*s],
+						[t*x*y+z*s, t*y*y+c, t*y*z-x*s],
+						[t*x*z-y*s, t*y*z+x*s, t*z*z+c]])
 
 			dtheta = Symbol('dtheta_{}'.format(q_idx))
 			ddtheta = Symbol('ddtheta_{}'.format(q_idx))
