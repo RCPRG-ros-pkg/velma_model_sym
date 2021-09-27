@@ -543,23 +543,23 @@ def main():
     model.addDH('torso_0_joint', 'torso_base', 'torso_link0', 0.03, 0, 0 )
 
     # This is the proper DH for KUKA LWR:
-    model.addDH('right_arm_0_joint', 'calib_right_arm_base_link', 'right_arm_1_link', 0.3105, 0, -1.57079632679 )
-    model.addDH('right_arm_1_joint', 'right_arm_1_link', 'right_arm_2_link', 0, 0, 1.57079632679 )
-    model.addDH('right_arm_2_joint', 'right_arm_2_link', 'right_arm_3_link', 0.4, 0, 1.57079632679 )
-    model.addDH('right_arm_3_joint', 'right_arm_3_link', 'right_arm_4_link', 0, 0, -1.57079632679 )
-    model.addDH('right_arm_4_joint', 'right_arm_4_link', 'right_arm_5_link', 0.39, 0, -1.57079632679 )
-    model.addDH('right_arm_5_joint', 'right_arm_5_link', 'right_arm_6_link', 0, 0, 1.57079632679 )
+    model.addDH('right_arm_0_joint', 'calib_right_arm_base_link', 'right_arm_1_link', 0.3105, 0, -math.pi/2 )
+    model.addDH('right_arm_1_joint', 'right_arm_1_link', 'right_arm_2_link', 0, 0, math.pi/2 )
+    model.addDH('right_arm_2_joint', 'right_arm_2_link', 'right_arm_3_link', 0.4, 0, math.pi/2 )
+    model.addDH('right_arm_3_joint', 'right_arm_3_link', 'right_arm_4_link', 0, 0, -math.pi/2 )
+    model.addDH('right_arm_4_joint', 'right_arm_4_link', 'right_arm_5_link', 0.39, 0, -math.pi/2 )
+    model.addDH('right_arm_5_joint', 'right_arm_5_link', 'right_arm_6_link', 0, 0, math.pi/2 )
     model.addDH('right_arm_6_joint', 'right_arm_6_link', 'right_arm_7_link', 0, 0, 0 )
 
-    model.addDH('left_arm_0_joint', 'calib_left_arm_base_link', 'left_arm_1_link', 0.3105, 0, -1.57079632679 )
-    model.addDH('left_arm_1_joint', 'left_arm_1_link', 'left_arm_2_link', 0, 0, 1.57079632679 )
-    model.addDH('left_arm_2_joint', 'left_arm_2_link', 'left_arm_3_link', 0.4, 0, 1.57079632679 )
-    model.addDH('left_arm_3_joint', 'left_arm_3_link', 'left_arm_4_link', 0, 0, -1.57079632679 )
-    model.addDH('left_arm_4_joint', 'left_arm_4_link', 'left_arm_5_link', 0.39, 0, -1.57079632679 )
-    model.addDH('left_arm_5_joint', 'left_arm_5_link', 'left_arm_6_link', 0, 0, 1.57079632679 )
+    model.addDH('left_arm_0_joint', 'calib_left_arm_base_link', 'left_arm_1_link', 0.3105, 0, -math.pi/2 )
+    model.addDH('left_arm_1_joint', 'left_arm_1_link', 'left_arm_2_link', 0, 0, math.pi/2 )
+    model.addDH('left_arm_2_joint', 'left_arm_2_link', 'left_arm_3_link', 0.4, 0, math.pi/2 )
+    model.addDH('left_arm_3_joint', 'left_arm_3_link', 'left_arm_4_link', 0, 0, -math.pi/2 )
+    model.addDH('left_arm_4_joint', 'left_arm_4_link', 'left_arm_5_link', 0.39, 0, -math.pi/2 )
+    model.addDH('left_arm_5_joint', 'left_arm_5_link', 'left_arm_6_link', 0, 0, math.pi/2 )
     model.addDH('left_arm_6_joint', 'left_arm_6_link', 'left_arm_7_link', 0, 0, 0 )
 
-    model.addDH('head_pan_joint', 'head_pan_motor', 'head_pan_link', 0.11, 0, -1.57079632679 )
+    model.addDH('head_pan_joint', 'head_pan_motor', 'head_pan_link', 0.11, 0, -math.pi/2 )
     model.addDH('head_tilt_joint', 'head_pan_link', 'head_tilt_link_dummy', 0, 0, math.pi)
 
     # Do not calibrate:
@@ -578,7 +578,7 @@ def main():
     # This fixed transform differs in the models:
     model.addFixed('head_tilt_joint_dummy', 'head_tilt_link_dummy', 'head_tilt_link', 
         PyKDL.Frame(PyKDL.Rotation.RPY(0, 0, 0), PyKDL.Vector(0.0, 0.0, 0.0)))
-        #PyKDL.Frame(PyKDL.Rotation.RPY(3.14159265358, 0.0, -3.14159265359), PyKDL.Vector(0.0, 0.0, 0.0))
+        #PyKDL.Frame(PyKDL.Rotation.RPY(math.pi, 0.0, -math.pi), PyKDL.Vector(0.0, 0.0, 0.0))
 
     # Calibrate:
     model.addFixed('stereo_left_joint', 'head_tilt_link', 'stereo_left_link', 
@@ -586,7 +586,7 @@ def main():
 
     # Calibrate:
     model.addFixed('torso_link0_right_arm_base_joint', 'torso_link0', 'calib_right_arm_base_link', 
-        PyKDL.Frame(PyKDL.Rotation.RPY(0.0, -1.0471975512, 1.57079632679), PyKDL.Vector(0.0, -0.000188676, 1.17335)))
+        PyKDL.Frame(PyKDL.Rotation.RPY(0.0, -1.0471975512, math.pi/2), PyKDL.Vector(0.0, -0.000188676, 1.17335)))
 
     # Do not calibrate:
     model.addFixed('right_arm_ee_joint', 'right_arm_7_link', 'right_arm_ee_link', 
@@ -594,7 +594,7 @@ def main():
 
     # Calibrate:
     model.addFixed('torso_link0_left_arm_base_joint', 'torso_link0', 'calib_left_arm_base_link',
-        PyKDL.Frame(PyKDL.Rotation.RPY(0.0, 1.0471975512, 1.57079632679), PyKDL.Vector(0.0, 0.000188676, 1.17335)))
+        PyKDL.Frame(PyKDL.Rotation.RPY(0.0, 1.0471975512, math.pi/2), PyKDL.Vector(0.0, 0.000188676, 1.17335)))
 
     # Do not calibrate:
     model.addFixed('left_arm_ee_joint', 'left_arm_7_link', 'left_arm_ee_link', 
