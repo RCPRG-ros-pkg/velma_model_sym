@@ -626,7 +626,8 @@ def main():
         model.calculateFk(end_link)
         #model.calculateFd(end_link)
 
-    T_B_1 = model.getFkDiffSymb('torso_base', 'calib_left_arm_base_link')
+    T_B_1l = model.getFkDiffSymb('torso_base', 'calib_left_arm_base_link')
+    T_B_1r = model.getFkDiffSymb('torso_base', 'calib_right_arm_base_link')
 
     T_1_2 = model.getFkDiffSymb('calib_right_arm_base_link', 'right_arm_1_link')
     T_2_1 = model.getFkDiffSymb('right_arm_1_link', 'calib_right_arm_base_link')
@@ -656,6 +657,30 @@ def main():
     T_8_5 = T_8_7 * T_7_6 * T_6_5
     print('T_1_8')
     printMatrixElements(T_1_8)
+
+
+    T_B_8 = T_B_1r * T_1_8
+
+    print('T_B_8')
+    printMatrixElements(T_B_8)
+
+    print('T_B_1r')
+    printMatrixElements(T_B_1r)
+    print('T_1_2')
+    printMatrixElements(T_1_2)
+    print('T_2_3')
+    printMatrixElements(T_2_3)
+    print('T_3_4')
+    printMatrixElements(T_3_4)
+    print('T_4_5')
+    printMatrixElements(T_4_5)
+    print('T_5_6')
+    printMatrixElements(T_5_6)
+    print('T_6_7')
+    printMatrixElements(T_6_7)
+    print('T_7_8')
+    printMatrixElements(T_7_8)
+
     #for ix in range(4):
     #    for iy in range(4):
     #        print('[{},{}]:'.format(ix, iy))
@@ -712,8 +737,8 @@ def main():
     print('T_7_8')
     printMatrixElements(T_7_8)
 
-    print('T_B_1')
-    printMatrixElements(T_B_1)
+    print('T_B_1l')
+    printMatrixElements(T_B_1l)
 
     return 0
 
