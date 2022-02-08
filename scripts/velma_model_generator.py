@@ -6,9 +6,10 @@
 # Author: Dawid Seredynski, 2020
 #
 
+import math
 import numpy as np
 from sympy import pprint, init_printing, Symbol, sin, cos, Matrix, sympify,\
-                    lambdify
+                    lambdify, simplify, trigsimp, solve
 
 from urdf_parser_py.urdf import URDF
 from pykdl_utils.kdl_parser import kdl_tree_from_urdf_model
@@ -616,11 +617,255 @@ def strMatrixElements(m):
 
 def printMatrixElements(m):
     print(strMatrixElements(m))
-    #for ix in range(4):
-    #    for iy in range(4):
-    #        print('m[{},{}] = {}'.format(ix, iy, m[ix, iy]))
+
+def strVectorElements(m):
+    result = ''
+    for ix in range(4):
+        result += 'm[{}] = {}\n'.format(ix, m[ix])
+
+    for q_idx in range(8):
+        result = result.replace('cos(q{})'.format(q_idx), 'c{}'.format(q_idx))
+        result = result.replace('sin(q{})'.format(q_idx), 's{}'.format(q_idx))
+
+    repl = [('0.499999999997053', '0.5'),
+            ('5.55111512312578e-17', '0'),
+            ('4.24055235370702e-12', '0'),
+            ('2.4482638139034e-12', '0'),
+            ('4.89652762780679e-12', '0'),
+            ('9.88190223897333e-16', '0')]
+
+    for rep1, rep2 in repl:
+        result = result.replace(rep1, rep2)
+    return result
+
+def printVectorElements(m):
+    print(strVectorElements(m))
+
+def simp():
+
+    px = Symbol('px')
+    py = Symbol('py')
+    pz = Symbol('pz')
+    A = Symbol('A')
+    B = Symbol('B')
+    C = Symbol('C')
+    D = Symbol('D')
+    E = Symbol('E')
+    F = Symbol('F')
+    G = Symbol('G')
+    q1 = Symbol('q1')
+    q2 = Symbol('q2')
+    f = Symbol('f')
+    subs = {A:0.226011730455879,
+        B:0.0101320042838563,
+        C:0.0705067262216698,
+        D:0.997498864786543,
+        E:0.000147601929240085,
+        G:0.0449872129382484,
+        px:1.0, py:0.1, pz:0.3}
+    #0 = -px -(pz - 0.135 + G*sin(q2) - A*cos(q2)) * (cos(q1)*(-C*sin(q2) + D*cos(q2)) - sin(q1)*B) / (D*sin(q2) + C*cos(q2)) + cos(q1)*(A*sin(q2) + G*cos(q2)) + sin(q1)*E
+    #0 = -py -(pz - 0.135 + G*sin(q2) - A*cos(q2)) * (sin(q1)*(-C*sin(q2) + D*cos(q2)) + cos(q1)*B) / (D*sin(q2) + C*cos(q2)) + sin(q1)*(A*sin(q2) + G*cos(q2)) - cos(q1)*E
+    expr1 = -px -(pz - 0.135 + G*sin(q2) - A*cos(q2)) * (cos(q1)*(-C*sin(q2) + D*cos(q2)) - sin(q1)*B) / (D*sin(q2) + C*cos(q2)) + cos(q1)*(A*sin(q2) + G*cos(q2)) + sin(q1)*E
+    expr2 = -py -(pz - 0.135 + G*sin(q2) - A*cos(q2)) * (sin(q1)*(-C*sin(q2) + D*cos(q2)) + cos(q1)*B) / (D*sin(q2) + C*cos(q2)) + sin(q1)*(A*sin(q2) + G*cos(q2)) - cos(q1)*E
+    expr1 = expr1.subs(subs)
+    expr2 = expr2.subs(subs)
+    expr1a = expr1*(D*sin(q2) + C*cos(q2))
+    expr2a = expr2*(D*sin(q2) + C*cos(q2))
+    expr1a = expr1a.subs(subs)
+    expr2a = expr2a.subs(subs)
+    #print solve([expr1a, expr2a], q1, q2)
+
+    # test
+    expr2a = cos(q1)*px + sin(q1)*py + 1
+    expr2b = cos(q1)*px - sin(q1)*py
+    print solve([expr2a, expr2b], px, py)
+    #return 0
+
+    expr1a = -px -B*f*sin(q1) - C*f*sin(q2)*cos(q1) + D*f*cos(q1)*cos(q2) + E*sin(q1) + A*sin(q2)*cos(q1) + G*cos(q1)*cos(q2)
+    expr1b = -py -C*f*sin(q1)*sin(q2) + D*f*sin(q1)*cos(q2) + B*f*cos(q1) + A*sin(q1)*sin(q2) + G*sin(q1)*cos(q2) - E*cos(q1)
+    expr1c = -pz + 0.135 -D*f*sin(q2) - C*f*cos(q2) - G*sin(q2) + A*cos(q2)
+    expr1a = expr1a.subs(subs)
+    expr1b = expr1b.subs(subs)
+    expr1c = expr1c.subs(subs)
+    print solve([expr1a, expr1b, expr1c], q1, q2, f)
+
+    #print simplify(expr1a)
+    #print simplify(expr2a)
+    #print trigsimp(expr1a)
+    #print trigsimp(expr2a)
+    #print simplify(expr1a-  expr2a)
+
+def headFK():
+    # 1: head_base
+    #   2: head_pan_motor
+    #     3: head_pan_link
+    #       4: head_tilt_link_dummy
+    #         5: head_tilt_link
+    #           L: stereo_left_link
+    #             R: stereo_right_link
+
+    simp()
+    return 0
+    #x = Symbol('x')
+    #y = Symbol('y')
+    #expr = x + y
+    #print(expr)
+    #return 0
+
+    end_link_list = ['stereo_right_link']
+    model = RobotSymbModel(tree, base_link, used_joints)
+    for end_link_idx, end_link in enumerate(end_link_list):
+        model.calculateFk(end_link)
+        #model.calculateFd(end_link)
+
+    T_B_2 = model.getFkDiffSymb('head_base', 'head_pan_motor')
+    T_2_3 = model.getFkDiffSymb('head_pan_motor', 'head_pan_link')
+    T_3_4 = model.getFkDiffSymb('head_pan_link', 'head_tilt_link_dummy')
+    T_4_5 = model.getFkDiffSymb('head_tilt_link_dummy', 'head_tilt_link')
+    T_5_L = model.getFkDiffSymb('head_tilt_link', 'stereo_left_link')
+    #T_B_2 = model.getFkDiffSymb('stereo_left_link', 'stereo_left_optical_frame')
+    T_L_R = model.getFkDiffSymb('stereo_left_link', 'stereo_right_link')
+    #T_B_2 = model.getFkDiffSymb('stereo_right_link', 'stereo_right_optical_frame')
+
+    T_3_L = T_3_4 * T_4_5 * T_5_L
+    T_3_R = T_3_L * T_L_R
+
+    T_2_L = T_2_3 * T_3_L
+    T_2_R = T_2_L * T_L_R
+
+    T_B_L = T_B_2 * T_2_3 * T_3_4 * T_4_5 * T_5_L
+    T_B_R = T_B_L * T_L_R
+
+    p0 = Matrix([[0],[0],[0],[1]])
+    nx = Matrix([[1],[0],[0],[0]])
+
+    # Calculate optical frame in L frame
+
+    ptOL_L = p0
+    ptOR_L = T_L_R * p0
+    ptO_L = (ptOL_L + ptOR_L)/2
+
+    nOL_L = nx
+    nOR_L = T_L_R * nx
+    nO_L = (nOL_L + nOR_L)/2
+    nO_L_ev = nO_L.evalf()
+    nO_L_len = nO_L_ev[0]*nO_L_ev[0] + nO_L_ev[1]*nO_L_ev[1] + nO_L_ev[2]*nO_L_ev[2]
+    nO_L[0] = nO_L[0] / nO_L_len
+    nO_L[1] = nO_L[1] / nO_L_len
+    nO_L[2] = nO_L[2] / nO_L_len
+
+    printVectorElements( simplify(T_B_L * ptO_L + Symbol('f') * T_B_L * nO_L) )
+
+    return 0
+
+    #print('T_B_L')
+    #printMatrixElements(T_B_L)
+
+    # First, calculate IK for head pan (q15) - on global x-y plane
+    # We can assume head_tilt (q16) is equal to 0
+
+    # Position of the left eye
+    pL_2 = T_2_L * p0
+
+    # Position of the right eye
+    pR_2 = T_2_R * p0
+
+    # Position of the central point between two eyes
+    print('pO_2')
+    pO_2 = (pL_2 + pR_2)/2
+    printVectorElements( pO_2 )
+    pO_2 = pO_2.subs({Symbol('q16'):0})
+    printVectorElements( pO_2 )
+
+    #pO_B_e0 = pO_B.evalf(subs={Symbol('q15'):0})
+
+    # Optical frame normalized vector
+    print('nx_2')
+    nx_2 = T_2_L * nx
+    nx_2 = nx_2.subs({Symbol('q16'):0})
+    printVectorElements( nx_2 )
+
+    # Normalize the vector
+    nx_2_ev = nx_2.evalf(subs={Symbol('q15'):0})
+    nx_2_norm = math.sqrt(nx_2_ev[0]*nx_2_ev[0] + nx_2_ev[1]*nx_2_ev[1])
+    nx_2_ev[0] = nx_2_ev[0] / nx_2_norm
+    nx_2_ev[1] = nx_2_ev[1] / nx_2_norm
+    nx_2_ev[2] = 0.0
+
+    nx_2[0] = nx_2[0] / nx_2_norm
+    nx_2[1] = nx_2[1] / nx_2_norm
+    nx_2[2] = 0.0
+
+    printVectorElements( nx_2 )
+
+    # Calculate offset orthogonal to optical frame vector
+    pO_2_ev = pO_2.evalf(subs={Symbol('q15'):0})
+    # dot product
+    off = - nx_2_ev[0] * pO_2_ev[1] + nx_2_ev[1] * pO_2_ev[0]
+
+    print('# obj_x, obj_y, obj_z is expressed in head_pan_motor frame')
+    print('# head_pan_motor frame wrt head_base:')
+    printMatrixElements(T_B_2)
+    print('hp_ang = math.atan2(obj_y, obj_x) + math.asin({}/math.sqrt(obj_x*obj_x + obj_y*obj_y))'.format(off))
+
+    # head tilt
+    p4_3 = T_3_4 * p0
+
+    #printVectorElements(p4_3)
+
+    # Position of the left eye
+    pL_3 = T_3_L * p0
+
+    # Position of the right eye
+    pR_3 = T_3_R * p0
+
+    # Position of the central point between two eyes
+    #print('pO_3')
+    pO_3 = (pL_3 + pR_3)/2
+    #printVectorElements( pO_3 )
+    #pO_3 = pO_3.subs({Symbol('q16'):0})
+    #printVectorElements( pO_3 )
+
+    nx_3 = T_3_L * nx
+    #nx_3 = nx_3.subs({Symbol('q16'):0})
+    #printVectorElements( nx_3 )
+    # normalize in x-z plane
+    nx_3_ev = nx_3.evalf(subs={Symbol('q16'):0})
+    nx_3_norm = math.sqrt(nx_3_ev[0]*nx_3_ev[0] + nx_3_ev[2] * nx_3_ev[2])
+    nx_3_ev[0] = nx_3_ev[0] / nx_3_norm
+    nx_3_ev[1] = 0
+    nx_3_ev[2] = nx_3_ev[2] / nx_3_norm
+
+    #v = pO_3 - p4_3
+
+    pO_3_ev = pO_3.evalf(subs={Symbol('q16'):0})
+    pO_3_ev[2] -= p4_3[2]
+    # dot product
+    off = - nx_3_ev[0] * pO_3_ev[2] + nx_3_ev[2] * pO_3_ev[0]
+
+    print('# obj_x, obj_y, obj_z is expressed in head_pan_link frame')
+    print('# head_pan_link frame wrt head_base:')
+    printMatrixElements(T_B_2 * T_2_3)
+    print('obj_x2 = obj_x - {}'.format(p4_3[0]))
+    print('obj_z2 = obj_z - {}'.format(p4_3[2]))
+    print('ht_ang = - math.atan2(obj_z2, obj_x2) - math.asin({}/math.sqrt(obj_x2*obj_x2 + obj_z2*obj_z2))'.format(off))
+
+    T_B_T0 = model.getFkDiffSymb('torso_base', 'torso_link0')
+    T_T0_HB = model.getFkDiffSymb('torso_link0', 'head_base')
+
+    print('# transformation from torso_base to head_base')
+    printMatrixElements(T_B_T0*T_T0_HB)
+
+    print('# pO_3')
+    printVectorElements(pO_3)
+
+    print('# nx_3')
+    printVectorElements(nx_3)
 
 def main():
+    headFK()
+    return 0
+
     model = RobotSymbModel(tree, base_link, used_joints)
     for end_link_idx, end_link in enumerate(end_link_list):
         model.calculateFk(end_link)
