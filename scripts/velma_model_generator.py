@@ -135,10 +135,14 @@ used_joints = ['torso_0_joint', 'right_arm_0_joint', 'right_arm_1_joint',
     'right_arm_5_joint', 'right_arm_6_joint', 'left_arm_0_joint',
     'left_arm_1_joint', 'left_arm_2_joint', 'left_arm_3_joint',
     'left_arm_4_joint', 'left_arm_5_joint', 'left_arm_6_joint',
-    'head_pan_joint', 'head_tilt_joint']
+    'head_pan_joint', 'head_tilt_joint', 'leftKeepUprightJoint0', 'leftKeepUprightJoint1',
+    'rightKeepUprightJoint0', 'rightKeepUprightJoint1']
 
 base_link = 'torso_base'
-end_link_list = ['right_arm_7_link', 'left_arm_7_link', 'head_kinect_rgb_optical_frame']
+end_link_list = ['right_arm_7_link', 'left_arm_7_link', 'head_kinect_rgb_optical_frame',
+'left_keepUprightLink2', 'right_keepUprightLink2']
+    
+
 #end_link_list = ['right_arm_7_link']
 #end_link_list = ['left_arm_7_link']
 
@@ -863,8 +867,8 @@ def headFK():
     printVectorElements(nx_3)
 
 def main():
-    headFK()
-    return 0
+    #headFK()
+    #return 0
 
     model = RobotSymbModel(tree, base_link, used_joints)
     for end_link_idx, end_link in enumerate(end_link_list):
@@ -984,6 +988,21 @@ def main():
 
     print('T_B_1l')
     printMatrixElements(T_B_1l)
+
+
+    print('***********************')
+    print('***********************')
+    T_El_U1l = model.getFkDiffSymb('left_arm_ee_link', 'left_keepUprightLink1')
+    T_U1l_U2l = model.getFkDiffSymb('left_keepUprightLink1', 'left_keepUprightLink2')
+
+    T_Er_U1r = model.getFkDiffSymb('right_arm_ee_link', 'right_keepUprightLink1')
+    T_U1r_U2r = model.getFkDiffSymb('right_keepUprightLink1', 'right_keepUprightLink2')
+
+    print('T_El_U2l')
+    printMatrixElements(T_El_U1l * T_U1l_U2l)
+
+    print('T_Er_U2r')
+    printMatrixElements(T_Er_U1r * T_U1r_U2r)
 
     return 0
 
